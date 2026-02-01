@@ -6,8 +6,7 @@ export default defineConfig({
   plugins: [react()],
      base: '/',  // Change this to your repo name
   server: {
-    port: 3000,
-    open: true
+    port: 3000
   },
   build: {
     outDir: 'dist',
