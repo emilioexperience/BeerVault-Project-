@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeerVault - Track, Share & Discover Great Beers</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍺</text></svg>">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Meta tags for PWA and SEO -->
+  <meta name="description" content="Track your beer adventures, share discoveries, and connect with fellow beer enthusiasts">
+  <meta name="theme-color" content="#78350F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <!-- Open Graph / Social Media -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="BeerVault - Social Beer Tracking">
+  <meta property="og:description" content="Track, share, and discover great beers with the community">
+  <meta property="og:image" content="/og-image.png">
+  
+  <style>
+    * {
+      font-family: 'Inter', sans-serif;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #FEF3C7;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #D97706;
+      border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: #B45309;
+    }
+    
+    /* Loading animation */
+    .loading-spinner {
+      border: 4px solid #FEF3C7;
+      border-top: 4px solid #D97706;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Fade in animation */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.5s ease-out;
+    }
+    
+    /* Pulse animation for new items */
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.7;
+      }
+    }
+    
+    .pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <!-- Loading state -->
+    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(to bottom right, #FEF3C7, #FED7AA, #FEF08A);">
+      <div style="text-align: center;">
+        <div style="font-size: 80px; margin-bottom: 20px;">🍺</div>
+        <div class="loading-spinner" style="margin: 0 auto;"></div>
+        <p style="margin-top: 20px; color: #78350F; font-weight: 600;">Loading BeerVault...</p>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
