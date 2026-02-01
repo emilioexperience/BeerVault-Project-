@@ -874,6 +874,7 @@ function AnalyticsView({ userBeers }) {
 function AddBeerModal({ onClose, onSubmit, flavorOptions, beerStyles }) {
   const [formData, setFormData] = useState({ beerName: '', brewery: '', style: 'IPA', rating: 0, abv: '', ibu: '', price: '', location: '', locationCoords: null, flavors: [], notes: '', image: null, imageEmoji: '🍺' });
   const [hoverRating, setHoverRating] = useState(0);
+  const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
 
   const mockLocations = [
@@ -881,6 +882,29 @@ function AddBeerModal({ onClose, onSubmit, flavorOptions, beerStyles }) {
     { name: 'Valmiermuiža Brewery', coords: { lat: 57.5384, lng: 25.4263 } },
     { name: 'Folkklubs Ala Pagrabs, Riga', coords: { lat: 56.9489, lng: 24.1064 } },
   ];
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 500000) {
+        alert('Image too large! Please use an image under 500KB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result;
+        setFormData({ ...formData, image: base64 });
+        setImagePreview(base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setFormData({ ...formData, image: null });
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -901,11 +925,39 @@ function AddBeerModal({ onClose, onSubmit, flavorOptions, beerStyles }) {
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
             <label className="block text-amber-900 font-bold mb-2">Beer Photo</label>
-            <div className="flex gap-2">
-              {['🍺', '🍻', '🥃', '🍷'].map(emoji => (
-                <button key={emoji} type="button" onClick={() => setFormData({ ...formData, imageEmoji: emoji })} className={`text-3xl p-2 rounded-lg ${formData.imageEmoji === emoji ? 'bg-amber-200' : 'hover:bg-amber-100'}`}>{emoji}</button>
-              ))}
-            </div>
+
+            {imagePreview ? (
+              <div className="relative w-full h-48 rounded-xl overflow-hidden border-2 border-amber-300">
+                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                <button type="button" onClick={removeImage} className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600">
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-32 border-2 border-dashed border-amber-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-amber-50 transition-all"
+                >
+                  <Camera size={32} className="text-amber-500 mb-2" />
+                  <p className="text-amber-700 font-medium">Click to upload photo</p>
+                  <p className="text-amber-500 text-sm">Max 500KB</p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <p className="text-amber-700 text-sm text-center">Or choose an emoji:</p>
+                <div className="flex justify-center gap-2">
+                  {['🍺', '🍻', '🥃', '🍷'].map(emoji => (
+                    <button key={emoji} type="button" onClick={() => setFormData({ ...formData, imageEmoji: emoji })} className={`text-3xl p-2 rounded-lg ${formData.imageEmoji === emoji && !formData.image ? 'bg-amber-200' : 'hover:bg-amber-100'}`}>{emoji}</button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
