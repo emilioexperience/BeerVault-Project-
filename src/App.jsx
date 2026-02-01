@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Star, MapPin, DollarSign, TrendingUp, Users, Search, Filter, Heart, MessageCircle, Share2, Award, BarChart3, Map, Plus, X, ChevronDown, Menu, Home, Book, Globe, User, Settings, Upload, Check, Trophy, LogOut, Eye, EyeOff, Image, Send, Copy, Link, Trash2 } from 'lucide-react';
-import { initFirebase, isFirebaseConfigured, FirestoreService } from './firebase.js';
+import { isJsonBinConfigured, initJsonBin, JsonBinService } from './jsonbin.js';
 
 // ============================================
 // STORAGE UTILITIES (Fallback when Firebase not configured)
@@ -94,42 +94,37 @@ export default function BeerTrackerApp() {
   const [users, setUsers] = useState([]);
   const [showAddBeer, setShowAddBeer] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [useFirebase, setUseFirebase] = useState(false);
+  const [useCloudStorage, setUseCloudStorage] = useState(false);
 
   useEffect(() => {
     const initApp = async () => {
-      // Try to initialize Firebase
-      const firebaseReady = isFirebaseConfigured() && initFirebase();
-      setUseFirebase(firebaseReady);
+      // Try to initialize JSONBin.io
+      const jsonBinReady = isJsonBinConfigured() && await initJsonBin(getDemoBeers(), getDemoUsers());
+      setUseCloudStorage(jsonBinReady);
 
-      if (firebaseReady) {
-        // Use Firebase - set up real-time listeners
-        console.log('Using Firebase for data storage');
+      if (jsonBinReady) {
+        // Use JSONBin.io for shared storage
+        console.log('Using JSONBin.io for shared data storage');
 
-        // Listen for beers changes
-        FirestoreService.onBeersChange((firebaseBeers) => {
-          setBeers(firebaseBeers);
-          setIsLoading(false);
-        });
+        // Fetch initial data
+        const [cloudBeers, cloudUsers] = await Promise.all([
+          JsonBinService.getBeers(),
+          JsonBinService.getUsers()
+        ]);
 
-        // Listen for users changes
-        FirestoreService.onUsersChange((firebaseUsers) => {
-          if (firebaseUsers.length === 0) {
-            // Seed with demo users if empty
-            getDemoUsers().forEach(user => FirestoreService.addUser(user));
-          } else {
-            setUsers(firebaseUsers);
-          }
-        });
+        setBeers(cloudBeers || []);
+        setUsers(cloudUsers || []);
 
         // Check for saved user session
         const savedUser = Storage.get('beervault_current_user');
         if (savedUser) {
           setCurrentUser(savedUser);
         }
+
+        setIsLoading(false);
       } else {
         // Use localStorage fallback
-        console.log('Firebase not configured - using localStorage');
+        console.log('JSONBin not configured - using localStorage');
 
         let storedUsers = Storage.get('beervault_users');
         if (!storedUsers || storedUsers.length === 0) {
@@ -157,18 +152,18 @@ export default function BeerTrackerApp() {
     initApp();
   }, []);
 
-  // Save to localStorage when not using Firebase
+  // Save to localStorage when not using cloud storage
   useEffect(() => {
-    if (!useFirebase && beers.length > 0) {
+    if (!useCloudStorage && beers.length > 0) {
       Storage.set('beervault_beers', beers);
     }
-  }, [beers, useFirebase]);
+  }, [beers, useCloudStorage]);
 
   useEffect(() => {
-    if (!useFirebase && users.length > 0) {
+    if (!useCloudStorage && users.length > 0) {
       Storage.set('beervault_users', users);
     }
-  }, [users, useFirebase]);
+  }, [users, useCloudStorage]);
 
   const userBeers = currentUser ? beers.filter(b => b.userId === currentUser.id) : [];
 
@@ -196,8 +191,9 @@ export default function BeerTrackerApp() {
       weeklyBeers: 0
     };
 
-    if (useFirebase) {
-      const savedUser = await FirestoreService.addUser(user);
+    if (useCloudStorage) {
+      const savedUser = await JsonBinService.addUser(user);
+      setUsers([...users, savedUser]);
       return savedUser;
     } else {
       const updatedUsers = [...users, user];
@@ -218,15 +214,16 @@ export default function BeerTrackerApp() {
       comments: []
     };
 
-    if (useFirebase) {
-      await FirestoreService.addBeer(beer);
+    if (useCloudStorage) {
+      await JsonBinService.addBeer(beer);
+      setBeers([beer, ...beers]);
     } else {
       setBeers([beer, ...beers]);
     }
 
     // Update weekly beer count
-    if (useFirebase) {
-      await FirestoreService.updateUser(currentUser.id, {
+    if (useCloudStorage) {
+      await JsonBinService.updateUser(currentUser.id, {
         weeklyBeers: (currentUser.weeklyBeers || 0) + 1
       });
     }
@@ -236,11 +233,10 @@ export default function BeerTrackerApp() {
 
   const handleDeleteBeer = async (beerId) => {
     if (window.confirm('Are you sure you want to delete this beer?')) {
-      if (useFirebase) {
-        await FirestoreService.deleteBeer(beerId);
-      } else {
-        setBeers(beers.filter(b => b.id !== beerId));
+      if (useCloudStorage) {
+        await JsonBinService.deleteBeer(beerId);
       }
+      setBeers(beers.filter(b => b.id !== beerId));
     }
   };
 
@@ -254,17 +250,18 @@ export default function BeerTrackerApp() {
       ? likedBy.filter(id => id !== currentUser.id)
       : [...likedBy, currentUser.id];
 
-    if (useFirebase) {
-      await FirestoreService.updateBeer(beerId, {
+    const updatedBeers = beers.map(b =>
+      b.id === beerId
+        ? { ...b, likes: newLikedBy.length, likedBy: newLikedBy }
+        : b
+    );
+    setBeers(updatedBeers);
+
+    if (useCloudStorage) {
+      await JsonBinService.updateBeer(beerId, {
         likes: newLikedBy.length,
         likedBy: newLikedBy
       });
-    } else {
-      setBeers(beers.map(b =>
-        b.id === beerId
-          ? { ...b, likes: newLikedBy.length, likedBy: newLikedBy }
-          : b
-      ));
     }
   };
 
@@ -282,12 +279,12 @@ export default function BeerTrackerApp() {
 
     const updatedComments = [...(beer.comments || []), newComment];
 
-    if (useFirebase) {
-      await FirestoreService.updateBeer(beerId, { comments: updatedComments });
-    } else {
-      setBeers(beers.map(b =>
-        b.id === beerId ? { ...b, comments: updatedComments } : b
-      ));
+    setBeers(beers.map(b =>
+      b.id === beerId ? { ...b, comments: updatedComments } : b
+    ));
+
+    if (useCloudStorage) {
+      await JsonBinService.updateBeer(beerId, { comments: updatedComments });
     }
   };
 
@@ -316,7 +313,7 @@ export default function BeerTrackerApp() {
               <div>
                 <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: '"Playfair Display", serif' }}>BeerVault</h1>
                 <p className="text-xs text-amber-200">
-                  {useFirebase ? '🟢 Online Mode' : '🟡 Offline Mode'}
+                  {useCloudStorage ? '🟢 Online Mode' : '🟡 Offline Mode'}
                 </p>
               </div>
             </div>
